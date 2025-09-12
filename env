@@ -1,0 +1,8 @@
+PORT=3000
+
+CLIENT_ID: PUT YOUR CLIENT ID HERE
+CLIENT_SECRET: PUT YOUR CLIENT SECRET HERE
+ENVIRONMENT: PUT THE ENVIRONMENT HERE
+REDIRECT_URI: http://localhost:3000/api/auth/callback
+
+# copy the above into a .env and replace with your details.

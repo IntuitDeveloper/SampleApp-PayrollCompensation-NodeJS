@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connect QuickBooks Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero" aria-label="Connect to QuickBooks">
+      <div class="hero-content">
+        <h1 class="title">Connect to QuickBooks</h1>
+        <p class="subtitle">Seamlessly manage your employees compensations once connected.</p>
+        <button id="connectBtn" class="btn btn-primary" type="button" aria-controls="tabs">
+          Connect to Quickbooks
+        </button>
+      </div>
+    </section>
+
+    <section id="tabs" class="card tabs is-hidden" aria-label="Employee Compensation Actions">
+      <div role="tablist" aria-label="Employee Compensation tabs" class="tablist">
+        <button role="tab" aria-selected="false" aria-controls="panel-employee-compensation" id="tab-employee-compensation" class="tab-btn" tabindex="-1">Create Time Activity</button>
+      </div>
+
+      <div id="panel-employee-compensation" role="tabpanel" aria-labelledby="tab-employee-compensation" class="tab-panel" hidden>
+
+        <div class="form-row">
+          <label for="employee-id">Employee</label>
+          <div id="employee-id"></div>
+        </div>
+        <div class="form-row">
+          <label for="customer-id">Customer</label>
+          <div id="customer-id"></div>
+        </div>
+        <div class="form-row">
+          <label for="item-id">Item</label>
+          <div id="item-id"></div>
+        </div>
+        <div class="form-row">
+          <label for="comp-id">Compensation</label>
+          <div id="comp-id"></div>
+        </div>
+        
+
+        <div class="form-row">
+          <label for="hours">How many hours</label>
+          <input id="hours" name="hours" type="number" placeholder="Enter Hours" />
+        </div>
+
+        <div class="form-row">
+          <label for="minutes">How many minutes</label>
+          <input id="minutes" name="minutes" type="number" placeholder="Enter minutes" />
+        </div>
+
+        <div class="form-row">
+          <label for="description">Description</label>
+          <input id="description" name="description" type="text" placeholder="Enter description" />
+        </div>
+
+        <div class="form-row">
+          <label for="txnDate">Transaction Date</label>
+          <input id="txnDate" name="txnDate" type="date" placeholder="Choose Transaction Date" />
+        </div>
+
+          <div class="form-actions">
+            <button id="fetch-employee-btn" class="btn btn-primary" type="button">Create Time Activity</button>
+          </div>
+        </form>
+      </div>
+    </section>
+    <div>
+        <label id="display"></label>
+        <div id="table"></div>
+    </div>
+  </main>
+
+  <script>
+    (async function () {
+      const connectButton = document.getElementById('connectBtn');
+      const tabsSection = document.getElementById('tabs');
+      const heroSection = document.querySelector('.hero');
+      const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
+      const tabPanels = Array.from(document.querySelectorAll('.tab-panel'));
+
+      let allCustomers = [];
+
+      const fetchEmployeeButton = document.getElementById('fetch-employee-btn');
+
+
+      let isAuth = false;
+
+      await checkToken();
+      if(isAuth) {
+          showTabs();
+          await populateEmployees();
+          await populateCustomers();
+          await populateItems();
+      }
+
+      function activateTab(index) {
+        tabButtons.forEach((btn, i) => {
+          const isActive = i === index;
+          btn.setAttribute('aria-selected', String(isActive));
+          btn.tabIndex = isActive ? 0 : -1;
+          btn.classList.toggle('is-active', isActive);
+          const panel = tabPanels[i];
+          if (panel) {
+            if (isActive) {
+              panel.removeAttribute('hidden');
+            } else {
+              panel.setAttribute('hidden', '');
+            }
+          }
+        });
+      }
+
+      async function checkToken() {
+        const response = await fetch('/api/auth/retrieveToken', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        if(response.ok) {
+            const data = await response.json();
+            if(data.token) {
+                isAuth = true;
+            }
+        }
+      }
+
+    async function login() {
+        const response = await fetch('/api/auth/login', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        if(response.ok) {
+            const data = await response.json();
+            if(data.redirectUrl) window.location.href = data.redirectUrl;
+        }
+    }
+
+    function getValue(value, comma) {
+      return value ? `${value}${comma ? ',' : ''}` : '';
+    }
+      fetchEmployeeButton.addEventListener('click', function() {
+        createTimeActivity();
+      });     
+
+      async function populateEmployeeCompensation(id) {
+        console.log('the id is', id);
+        const response =  await fetch(`/api/quickbook/employee/compensation/${id}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json' 
+            }
+        });
+        if(response.ok) {
+          console.log('the respo', response);
+          const data = await response.json();
+          const compensations = data.payrollEmployeeCompensations.edges;
+          let input = '<select id="compensationId" name="compensationId"><option>make choice</option>';
+
+          for(const node of compensations) {
+            const compensation = node?.node;
+            if(!compensation) {
+                continue;
+            }
+            console.log('compenstaion-i', compensation);
+            const id = compensation.id;
+            const name = compensation.employerCompensation?.name
+            input = `${input}
+              <option value=${id}>${name}</option>`;
+          }
+          input = `${input}
+            </select>`;
+          const compId = document.getElementById('comp-id');
+          compId.innerHTML = input;
+        }
+      }
+
+      async function populateEmployees() {
+        const response = await fetch('/api/quickbook/employee', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        if(response.ok) {
+          const data = await response.json();
+          const employees = data?.QueryResponse?.Employee;
+          const employeeId = document.getElementById('employee-id');
+          
+          if(employees && employees.length > 0) {
+            let input = '<select id="employeeId" name="employeeId"><option>make choice</option>';
+            for(const employee of employees) {
+              input = `${input}
+                <option value=${employee.Id}>${employee.DisplayName}</option>`;
+            }
+            input = `${input}
+                </select>`;
+            employeeId.innerHTML = input;
+
+            const employeeSelect = document.getElementById('employeeId');
+            employeeSelect.addEventListener('change', function (e) {
+              populateEmployeeCompensation(e.target.value);
+            });
+          }
+        }
+      }
+
+      async function populateCustomers() {
+        const response = await fetch('/api/quickbook/employee/customers', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        if(response.ok) {
+          const data = await response.json();
+          const customers = data?.QueryResponse?.Customer;
+          const customerId = document.getElementById('customer-id');
+
+          if(customers && customers.length > 0) {
+            let input = '<select id="customerId" name="customerId"><option>make choice</option>';
+            for(const customer of customers) {
+              input = `${input}
+                <option value=${customer.Id}>${customer.DisplayName}</option>`;
+            }
+            input = `${input}
+                </select>`;
+            customerId.innerHTML = input; 
+          }
+        }
+      }
+
+      async function populateItems() {
+        const response = await fetch('/api/quickbook/employee/items', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        if(response.ok) {
+          const data = await response.json();
+          const items = data?.QueryResponse?.Item;
+          const itemId = document.getElementById('item-id');
+          
+          if(items && items.length > 0) {
+            let input = '<select id="itemId" name="itemId"><option>make choice</option>';
+            for(const item of items) {
+              input = `${input}
+                <option value=${item.Id}>${item.Name}</option>`;
+            }
+            input = `${input}
+                </select>`;
+            itemId.innerHTML = input;
+          }
+        }
+      }
+
+      async function createTimeActivity() {
+        const employeeId = document.getElementById('employeeId').value;
+        const customerId = document.getElementById('customerId').value;
+        const itemId = document.getElementById('itemId').value;
+        const payrollItem = document.getElementById('compensationId')?.value;
+        const hours = document.getElementById('hours').value;
+        const minutes = document.getElementById('minutes').value;
+        const txnDate = document.getElementById('txnDate').value;
+        const description = document.getElementById('description').value;
+        const body = {
+            "TxnDate": txnDate,
+            "NameOf": "Employee",
+            "EmployeeRef": { "value": employeeId },
+            "PayrollItemRef": {
+                "value": payrollItem
+            },
+            "CustomerRef": {
+                "value": customerId
+            },
+            "ItemRef": { "value": itemId },
+            "Hours": hours,
+            "Minutes": 0,
+            "Description": description
+        }
+        const response = await fetch('/api/quickbook/employee/time-activity', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body),
+        });
+        if(response.ok) {
+          const data = await response.json();
+          if(data.TimeActivity?.Id) {
+            alert('succesfully created');
+          }
+        }
+      }
+      
+      function showTabs() {
+        tabsSection.classList.remove('is-hidden');
+        heroSection.classList.add('is-hidden');
+        activateTab(0);
+        tabButtons[0].focus();
+    }
+
+    connectButton.addEventListener('click', login);
+
+    tabButtons.forEach((btn, index) => {
+        btn.addEventListener('click', () => activateTab(index));
+        btn.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            const next = (index + 1) % tabButtons.length;
+            activateTab(next);
+            tabButtons[next].focus();
+            } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            const prev = (index - 1 + tabButtons.length) % tabButtons.length;
+            activateTab(prev);
+            tabButtons[prev].focus();
+            }
+        });
+    });
+
+    })();
+  </script>
+</body>
+</html> 
