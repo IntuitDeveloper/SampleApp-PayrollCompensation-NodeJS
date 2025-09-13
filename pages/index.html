@@ -154,7 +154,6 @@
       });     
 
       async function populateEmployeeCompensation(id) {
-        console.log('the id is', id);
         const response =  await fetch(`/api/quickbook/employee/compensation/${id}`, {
             method: 'GET',
             headers: {
@@ -162,7 +161,6 @@
             }
         });
         if(response.ok) {
-          console.log('the respo', response);
           const data = await response.json();
           const compensations = data.payrollEmployeeCompensations.edges;
           let input = '<select id="compensationId" name="compensationId"><option>make choice</option>';
@@ -172,7 +170,6 @@
             if(!compensation) {
                 continue;
             }
-            console.log('compenstaion-i', compensation);
             const id = compensation.id;
             const name = compensation.employerCompensation?.name
             input = `${input}
