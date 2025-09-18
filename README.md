@@ -3,9 +3,15 @@
 A minimal Node.js app demonstrating QuickBooks Online OAuth, basic QBO REST queries, and a GraphQL call to retrieve employee compensation, with a small UI to drive the flow.
 
 ### Prerequisites
-- Node.js 18+
+- **Node.js 18+** (required - older versions will fail with `Cannot find module 'node:events'`)
 - A QuickBooks Online sandbox company
 - An Intuit Developer app (Client ID/Secret, Redirect URI)
+
+**Check your Node version:**
+```bash
+node --version
+# Should show v18.0.0 or higher
+```
 
 ### Environment Variables
 Create an `.env` file in the project root:
@@ -19,8 +25,14 @@ REDIRECT_URI=http://localhost:3000/api/auth/callback
 ```
 
 ### Install and Run
-```
+```bash
+# Install all dependencies (including peer dependencies)
 npm install
+
+# If you get "Cannot find package 'graphql'" error, install it explicitly:
+npm install graphql
+
+# Start the server
 npm start
 ```
 The app starts at `http://localhost:3000`.
@@ -64,9 +76,20 @@ Variables sent include employee id and optional flags (e.g., `active`, `first`).
   - Fetch employee compensation and create a TimeActivity
 
 ### Troubleshooting
-- 401 Not authenticated: Complete OAuth again (`/api/auth/login`).
-- 400 GraphQL validation: Ensure payroll GraphQL access and variable shapes match your tenant’s schema.
-- Missing data: Verify `realmId` is present on the token and the company has sample data.
+
+#### Installation Issues
+- **Node version too old**: Update to Node.js 18+ if you see `Cannot find module 'node:events'`
+- **Missing graphql package**: Run `npm install graphql` if you see `Cannot find package 'graphql'`
+- **Clean install**: If issues persist, try:
+  ```bash
+  rm -rf node_modules package-lock.json
+  npm install
+  ```
+
+#### Runtime Issues
+- **401 Not authenticated**: Complete OAuth again (`/api/auth/login`)
+- **400 GraphQL validation**: Ensure payroll GraphQL access and variable shapes match your tenant's schema
+- **Missing data**: Verify `realmId` is present on the token and the company has sample data
 
 ### Scripts
 - `npm start` → Start server on `PORT` (default 3000)
